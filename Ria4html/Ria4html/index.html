@@ -36,7 +36,7 @@
                 upshot.addEntityProperties(self); // add properties managed by upshot
             };
 
-            function TodoItemViewModel() {
+            function TodoItemViewModel(dataSource) {
                 // Data
                 var self = this;
 
@@ -49,11 +49,10 @@
                 self.localDataSource = upshot.LocalDataSource({ source: self.dataSource, autoRefresh: true });
 
                 // Public data properties
-                self.todoItems = self.localDataSource.getEntities();
-                //self.todoItems = self.dataSource.getEntities();
+                self.todoItems = self.dataSource.getEntities();
                 self.newTodoItem = ko.observable(new TodoItem());
                 // Not possible on the localDataSource only on the remote
-                self.validationConfig = $.extend({}, self.localDataSource.getEntityValidationRules(), {
+                self.validationConfig = $.extend({}, self.dataSource.getEntityValidationRules(), {
                     submitHandler: handleSubmit
                 });
 
@@ -67,7 +66,10 @@
                 self.revertAll = function () { self.dataSource.revertChanges() }
             }
 
-            ko.applyBindings(new TodoItemViewModel());
+            // necessary for validation
+            upshot.dataSources.GetTodoItems.refresh( function () {
+                ko.applyBindings(new TodoItemViewModel());
+            });
         });
     </script>
 </head>
@@ -75,10 +77,12 @@
     <button data-bind="click: saveAll">Save all</button>
     <button data-bind="click: revertAll">Revert all</button>
     <ol data-bind="foreach: todoItems">
-        <li><strong data-bind="text: Title"></strong>
+        <li data-bind="visible: IsDeleted != 'true'"><strong data-bind="text: Title"></strong>
             <label>
                 <input data-bind="checked: IsDone" type="checkbox" />
                 Done
+                <input data-bind="checked: IsDeleted" type="checkbox" disabled="disabled" />
+                Deleted
             </label>
             <button class="removeButton" data-bind="click: $parent.removeTodoItem">remove</button>
         </li>
@@ -90,7 +94,7 @@
                 <caption>TodoItem Information</caption>
                 <tr>
                     <th>Title</th>
-                    <td><input data-bind="value: Title, autovalidate: true" name="Title" /></td>
+                    <td><input data-bind="value: Title, autovalidate: true" data-val="true" name="Title" /></td>
                 </tr>
                 <tr>
                     <th>Is done</th>
