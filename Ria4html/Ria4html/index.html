@@ -33,6 +33,8 @@
                 self.TodoItemId = ko.observable(properties.TodoItemId || 0);
                 self.Title = ko.observable(properties.Title);
                 self.IsDone = ko.observable(properties.IsDone);
+                // Added for updating entities.
+                upshot.map(properties, "TodoItem:#Ria4html.Models", self); // Add properties from the server. 
                 upshot.addEntityProperties(self); // add properties managed by upshot
             };
 
@@ -41,7 +43,9 @@
                 var self = this;
 
                 var handleSubmit = function () {
-                    self.todoItems.unshift(self.newTodoItem()); // Add new product to data source
+                    if (!self.newTodoItem().TodoItemId() || self.newTodoItem().TodoItemId() == 0) {
+                        self.todoItems.unshift(self.newTodoItem()); // Add new product to data source
+                    }
                     self.newTodoItem(new TodoItem())            // Revert form to blank state
                 }
 
@@ -61,6 +65,10 @@
                     self.dataSource.deleteEntity(todoItem);
                 };
 
+                self.editTodoItem = function (todoItem) {
+                    self.newTodoItem(new TodoItem(todoItem));
+                };
+
                 // Operations
                 self.saveAll = function () { self.dataSource.commitChanges() }
                 self.revertAll = function () { self.dataSource.revertChanges() }
@@ -77,13 +85,14 @@
     <button data-bind="click: saveAll">Save all</button>
     <button data-bind="click: revertAll">Revert all</button>
     <ol data-bind="foreach: todoItems">
-        <li data-bind="visible: IsDeleted != 'true'"><strong data-bind="text: Title"></strong>
+        <li><strong data-bind="text: Title"></strong>
             <label>
                 <input data-bind="checked: IsDone" type="checkbox" />
                 Done
                 <input data-bind="checked: IsDeleted" type="checkbox" disabled="disabled" />
                 Deleted
             </label>
+            <button class="editButton" data-bind="click: $parent.editTodoItem">edit</button>
             <button class="removeButton" data-bind="click: $parent.removeTodoItem">remove</button>
         </li>
     </ol>
