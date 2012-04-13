@@ -1,0 +1,117 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>Ria4HTML</title>
+    <meta name="viewport" content="width=device-width" />
+    <link rel="stylesheet" type="text/css" href="Content/Spa.css" />
+
+    <script src="Scripts/jquery-1.6.4.js" type="text/javascript"></script>
+    <script type="text/javascript" src="Scripts/jquery.validate.js"></script>
+    <script src="Scripts/knockout.debug.js" type="text/javascript"></script>
+    <script src="Scripts/upshot.js" type="text/javascript"></script>
+    <script src="Scripts/upshot.compat.knockout.js" type="text/javascript"></script>
+    <script src="Scripts/upshot.knockout.extensions.js" type="text/javascript"></script>
+
+    <script type="text/javascript">
+        $(function () {
+            upshot.dataSources = upshot.dataSources || {};
+
+            upshot.dataSources.GetTodoItems = upshot.RemoteDataSource({
+                providerParameters: { url: "/Ria4HTMLWithoutSPA-Services-TodoItemDomainService.svc", operationName: "GetTodoItems" },
+                provider: upshot.riaDataProvider,
+                bufferChanges: true,
+                entityType: "TodoItem:#Ria4HTMLWithoutSPA.Models", // necessary for insert
+                mapping: TodoItem // necessary for insert
+            });
+
+            function TodoItem(properties) {
+                var self = this;
+                properties = properties || {};
+                self.TodoItemId = ko.observable(properties.TodoItemId || 0);
+                self.Title = ko.observable(properties.Title);
+                self.IsDone = ko.observable(properties.IsDone);
+                // Added for updating entities.
+                upshot.map(properties, "TodoItem:#Ria4HTMLWithoutSPA.Models", self); // Add properties from the server. 
+                upshot.addEntityProperties(self); // add properties managed by upshot
+            };
+
+            function TodoItemViewModel(dataSource) {
+                // Data
+                var self = this;
+
+                var handleSubmit = function () {
+                    if (!self.newTodoItem().TodoItemId() || self.newTodoItem().TodoItemId() == 0) {
+                        self.todoItems.unshift(self.newTodoItem()); // Add new product to data source
+                    }
+                    self.newTodoItem(new TodoItem())            // Revert form to blank state
+                }
+
+                self.dataSource = upshot.dataSources.GetTodoItems.refresh();
+                self.localDataSource = upshot.LocalDataSource({ source: self.dataSource, autoRefresh: true });
+
+                // Public data properties
+                self.todoItems = self.dataSource.getEntities();
+                self.newTodoItem = ko.observable(new TodoItem());
+                // Not possible on the localDataSource only on the remote
+                self.validationConfig = $.extend({}, self.dataSource.getEntityValidationRules(), {
+                    submitHandler: handleSubmit
+                });
+
+                // Public operations
+                self.removeTodoItem = function (todoItem) {
+                    self.dataSource.deleteEntity(todoItem);
+                };
+
+                self.editTodoItem = function (todoItem) {
+                    self.newTodoItem(new TodoItem(todoItem));
+                };
+
+                // Operations
+                self.saveAll = function () { self.dataSource.commitChanges() }
+                self.revertAll = function () { self.dataSource.revertChanges() }
+            }
+
+            // necessary for validation
+            upshot.dataSources.GetTodoItems.refresh({}, function () {
+                ko.applyBindings(new TodoItemViewModel());
+            });
+        });
+    </script>
+</head>
+<body>
+    <button data-bind="click: saveAll">Save all</button>
+    <button data-bind="click: revertAll">Revert all</button>
+    <ol data-bind="foreach: todoItems">
+        <li><strong data-bind="text: Title"></strong>
+            <label>
+                <input data-bind="checked: IsDone" type="checkbox" />
+                Done
+                <input data-bind="checked: IsDeleted" type="checkbox" disabled="disabled" />
+                Deleted
+            </label>
+            <button class="editButton" data-bind="click: $parent.editTodoItem">edit</button>
+            <button class="removeButton" data-bind="click: $parent.removeTodoItem">remove</button>
+        </li>
+    </ol>
+
+    <form data-bind="validate: validationConfig, with: newTodoItem">
+        <fieldset>
+            <table>
+                <caption>TodoItem Information</caption>
+                <tr>
+                    <th>Title</th>
+                    <td><input data-bind="value: Title, autovalidate: true" data-val="true" name="Title" /></td>
+                </tr>
+                <tr>
+                    <th>Is done</th>
+                    <td><input data-bind="checked: IsDone, autovalidate: true" name="IsDone" type="checkbox" /></td>
+                </tr>
+                <tr>
+                    <th>Action</th>
+                    <td><button class="addButton" type="submit">add</button></td>
+                </tr>
+            </table>
+        </fieldset>
+    </form>
+</body>
+</html>
